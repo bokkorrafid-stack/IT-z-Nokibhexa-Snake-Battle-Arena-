@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>IT'z Nokibhexa Snake Battle Arena</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Syncopate:wght@700&family=Orbitron:wght@400;900&display=swap');
+        
+        body {
+            background-color: #000;
+            color: #f1f5f9;
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Orbitron', sans-serif;
+            touch-action: none;
+            user-select: none;
+        }
+
+        canvas { 
+            display: block; 
+            image-rendering: auto;
+        }
+
+        .main-title {
+            font-family: 'Syncopate', sans-serif;
+            background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 50%, #64748b 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 20px rgba(255,255,255,0.2));
+            animation: titlePulse 3s ease-in-out infinite;
+        }
+
+        @keyframes titlePulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.02); }
+        }
+
+        .emblem-anim {
+            animation: float 4s ease-in-out infinite, glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+        }
+
+        @keyframes glow {
+            from { filter: drop-shadow(0 0 5px rgba(239, 68, 68, 0.4)); }
+            to { filter: drop-shadow(0 0 25px rgba(239, 68, 68, 0.9)); }
+        }
+
+        #joystick-zone {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 50%;
+            height: 50%;
+            z-index: 100;
+            touch-action: none;
+        }
+
+        #joystick-container {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            backdrop-filter: blur(8px);
+            transform: translate(-50%, -50%);
+        }
+
+        #joystick-knob {
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle at 30% 30%, #ffffff, #475569);
+            border-radius: 50%;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.8);
+            position: absolute;
+        }
+
+        .ui-layer {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 10;
+            padding: 20px;
+        }
+
+        .stat-card {
+            background: rgba(15, 23, 42, 0.85);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            padding: 10px 16px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            backdrop-filter: blur(10px);
+            pointer-events: auto;
+        }
+
+        .menu-overlay {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at center, #1e293b 0%, #020617 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .skin-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+            width: 100%;
+            max-width: 600px;
+            padding: 10px;
+            max-height: 30vh;
+            overflow-y: auto;
+        }
+
+        .skin-card {
+            cursor: pointer;
+            background: rgba(30, 41, 59, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.2s;
+        }
+
+        .skin-card.selected {
+            border-color: #fbbf24;
+            background: rgba(51, 65, 85, 0.8);
+        }
+
+        .skin-preview {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+        }
+
+        #intro-overlay {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 1s ease;
+        }
+
+        .room-input {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            text-align: center;
+            letter-spacing: 2px;
+            font-weight: 900;
+            width: 100%;
+            max-width: 300px;
+            outline: none;
+        }
+
+        .room-input:focus { border-color: #fbbf24; }
+
+        .btn {
+            background: white;
+            color: black;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-weight: 900;
+            text-transform: uppercase;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            background: #fbbf24;
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+    </style>
+</head>
+<body>
+
+<div id="intro-overlay">
+    <img src="https://i.ibb.co.com/hJrNTR41/elim-icon.png" class="w-24 h-24 mb-6 emblem-anim" alt="Logo">
+    <h1 class="main-title text-3xl md:text-5xl font-black text-center mb-4">IT'z Nokibhexa</h1>
+    <p class="text-white/40 tracking-[0.5em] text-[10px] uppercase font-bold">Multiplayer Arena</p>
+</div>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    
+    <div class="ui-layer">
+        <div class="flex justify-between items-start w-full">
+            <div class="flex flex-col gap-2">
+                <div class="stat-card">
+                    <img src="https://i.ibb.co.com/SX3YSmzf/score-icon.png" class="w-6 h-6" alt="Score">
+                    <div class="flex flex-col">
+                        <span class="text-[8px] text-white/50 font-bold uppercase">Score</span>
+                        <span id="scoreDisplay" class="text-xl font-black text-white">0</span>
+                    </div>
+                </div>
+                <div id="roomDisplay" class="stat-card bg-blue-900/40 border-blue-500/30 hidden">
+                    <span class="text-[8px] text-blue-200/50 font-bold uppercase mr-2">Room</span>
+                    <span id="roomIdVal" class="text-xs font-black text-white">---</span>
+                </div>
+            </div>
+
+            <button onclick="location.reload()" class="stat-card bg-red-900/60 text-[10px] font-black text-white hover:bg-red-700 transition-all border-red-500/30 uppercase">
+                Abandon
+            </button>
+
+            <div class="stat-card border-red-500/20">
+                <div class="flex flex-col items-end">
+                    <span class="text-[10px] text-red-400/50 font-bold uppercase">Elims</span>
+                    <span id="killDisplay" class="text-xl font-black text-red-500">0</span>
+                </div>
+                <img src="https://i.ibb.co.com/hJrNTR41/elim-icon.png" class="w-6 h-6" alt="Kills">
+            </div>
+        </div>
+    </div>
+
+    <div id="joystick-zone">
+        <div id="joystick-container">
+            <div id="joystick-knob"></div>
+        </div>
+    </div>
+
+    <div id="startMenu" class="menu-overlay hidden">
+        <div class="text-center mb-6">
+            <h1 class="main-title text-3xl font-black mb-1">BATTLE ARENA</h1>
+            <p class="text-white/40 text-[9px] tracking-[0.3em]">SELECT SKIN & ENTER ROOM</p>
+        </div>
+
+        <div class="skin-grid mb-6" id="skinGrid"></div>
+
+        <div class="flex flex-col items-center gap-4 w-full max-w-sm">
+            <input type="text" id="roomInput" class="room-input" placeholder="ROOM ID" maxlength="6">
+            <div class="flex gap-2 w-full">
+                <button id="joinBtn" class="btn flex-1">JOIN</button>
+                <button id="hostBtn" class="btn btn-secondary flex-1">HOST</button>
+            </div>
+            <p id="menuStatus" class="text-red-400 text-[10px] font-bold h-4"></p>
+        </div>
+    </div>
+
+    <div id="gameOverModal" class="hidden fixed inset-0 bg-black/95 z-[110] flex flex-col items-center justify-center text-center p-6">
+        <h2 class="text-5xl font-black text-red-600 mb-2 italic">ELIMINATED</h2>
+        <div id="finalStats" class="text-white/60 mb-10 text-sm tracking-[0.5em] font-bold uppercase"></div>
+        <button onclick="location.reload()" class="btn">Return to Menu</button>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc, collection, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // --- CONFIG ---
+    const firebaseConfig = JSON.parse(__firebase_config);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'snake-battle-arena';
+
+    // --- GAME ASSETS & CONSTANTS ---
+    const assets = {
+        bg: new Image(),
+        crystal1: new Image(), crystal2: new Image(),
+        fruit1: new Image(), fruit2: new Image(), fruit3: new Image(),
+        super1: new Image(), super2: new Image()
+    };
+    assets.bg.src = "https://i.ibb.co.com/21Mv0PvC/realistic-bg.png";
+    assets.crystal1.src = "https://i.ibb.co.com/JJLMCMC/element1.png";
+    assets.crystal2.src = "https://i.ibb.co.com/zVBz5v0j/element2.png";
+    assets.fruit1.src = "https://i.ibb.co.com/HfcfH53R/fruit1.png";
+    assets.fruit2.src = "https://i.ibb.co.com/nNpPGZB1/fruit2.png";
+    assets.fruit3.src = "https://i.ibb.co.com/wZbZ5B2n/fruit3.png";
+    assets.super1.src = "https://i.ibb.co.com/k23CHj6m/super1.png";
+    assets.super2.src = "https://i.ibb.co.com/vvHxT5GG/super2.png";
+
+    const SKINS = [
+        { id: 'python', name: 'Python', p: '#5d4037', s: '#3e2723' },
+        { id: 'cobra', name: 'Cobra', p: '#212121', s: '#424242' },
+        { id: 'viper', name: 'Viper', p: '#2e7d32', s: '#1b5e20' },
+        { id: 'coral', name: 'Coral', p: '#d32f2f', s: '#ffeb3b' },
+        { id: 'blackmamba', name: 'Mamba', p: '#263238', s: '#455a64' },
+        { id: 'lava', name: 'Lava', p: '#bf360c', s: '#212121' }
+    ];
+
+    const GRID_SIZE = 30;
+    const WORLD_W = 100, WORLD_H = 100;
+    const UPDATE_TICK = 150; 
+    const NETWORK_TICK = 150;
+
+    // --- STATE ---
+    let user = null;
+    let roomId = null;
+    let roomRef = null;
+    let selectedSkinId = 'python';
+    let isGameOver = false;
+    let score = 0;
+    let kills = 0;
+    let frame = 0;
+    let localSnake = null;
+    let remotePlayers = {};
+    let roomFruits = [];
+    let roomElements = [];
+    let lastTick = 0;
+    let lastNetworkSync = 0;
+
+    // --- INITIALIZATION ---
+    async function init() {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+            await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+            await signInAnonymously(auth);
+        }
+
+        onAuthStateChanged(auth, (u) => {
+            user = u;
+            if (u) {
+                document.getElementById('intro-overlay').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('intro-overlay').style.display = 'none';
+                    document.getElementById('startMenu').classList.remove('hidden');
+                }, 1000);
+            }
+        });
+
+        setupUI();
+    }
+
+    function setupUI() {
+        const grid = document.getElementById('skinGrid');
+        SKINS.forEach(s => {
+            const card = document.createElement('div');
+            card.className = `skin-card ${s.id === selectedSkinId ? 'selected' : ''}`;
+            card.onclick = () => {
+                selectedSkinId = s.id;
+                document.querySelectorAll('.skin-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+            };
+            const prev = document.createElement('div');
+            prev.className = 'skin-preview';
+            prev.style.background = `linear-gradient(${s.p}, ${s.s})`;
+            const name = document.createElement('span');
+            name.className = 'text-[8px] text-white/70 font-black uppercase mt-2';
+            name.innerText = s.name;
+            card.appendChild(prev); card.appendChild(name); grid.appendChild(card);
+        });
+
+        document.getElementById('hostBtn').onclick = () => startArena(true);
+        document.getElementById('joinBtn').onclick = () => startArena(false);
+    }
+
+    async function startArena(isHost) {
+        if (!user) return;
+        const inputId = document.getElementById('roomInput').value.trim().toUpperCase();
+        
+        if (isHost) {
+            roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
+        } else {
+            if (!inputId) { showStatus("ID REQUIRED"); return; }
+            roomId = inputId;
+        }
+
+        roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
+        
+        if (isHost) {
+            const fruits = Array.from({length: 30}, () => createFruitData());
+            const elements = Array.from({length: 15}, () => ({
+                x: Math.random() * WORLD_W, 
+                y: Math.random() * WORLD_H, 
+                t: Math.random() > 0.5 ? 1 : 2
+            }));
+            await setDoc(roomRef, { host: user.uid, fruits, elements, createdAt: Date.now() });
+        } else {
+            const snap = await getDoc(roomRef);
+            if (!snap.exists()) { showStatus("ROOM NOT FOUND"); return; }
+        }
+
+        document.getElementById('startMenu').classList.add('hidden');
+        document.getElementById('roomDisplay').classList.remove('hidden');
+        document.getElementById('roomIdVal').innerText = roomId;
+        
+        const canvas = document.getElementById('gameCanvas');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const skin = SKINS.find(s => s.id === selectedSkinId);
+        localSnake = new Snake(Math.random()*80+10, Math.random()*80+10, skin, true);
+
+        onSnapshot(roomRef, (snap) => {
+            if (!snap.exists()) return;
+            const data = snap.data();
+            roomFruits = data.fruits || [];
+            roomElements = data.elements || [];
+
+            Object.keys(data).forEach(key => {
+                if (key.startsWith('p_') && key !== `p_${user.uid}`) {
+                    const pd = data[key];
+                    if (!remotePlayers[key]) remotePlayers[key] = new Snake(0,0, pd.skin, false);
+                    remotePlayers[key].body = pd.body;
+                    remotePlayers[key].alive = pd.alive;
+                }
+            });
+        }, (err) => console.error(err));
+
+        requestAnimationFrame(gameLoop);
+    }
+
+    function createFruitData() {
+        const r = Math.random();
+        let type = 'fruit1', pts = 10, sz = 1.2;
+        if (r < 0.05) { type = 'super2'; pts = 100; sz = 2.2; }
+        else if (r < 0.15) { type = 'super1'; pts = 50; sz = 1.8; }
+        return { x: Math.random()*96+2, y: Math.random()*96+2, type, pts, sz, id: Math.random().toString(36).substr(2, 9) };
+    }
+
+    function showStatus(msg) {
+        const el = document.getElementById('menuStatus');
+        el.innerText = msg;
+        setTimeout(() => el.innerText = "", 3000);
+    }
+
+    class Snake {
+        constructor(x, y, skin, isLocal) {
+            this.body = Array.from({length: 15}, (_, i) => ({x: x - i, y: y, a: 0}));
+            this.dir = {x: 1, y: 0};
+            this.nextDir = {x: 1, y: 0};
+            this.skin = skin;
+            this.isLocal = isLocal;
+            this.alive = true;
+        }
+
+        update() {
+            if (!this.alive) return;
+            this.dir = this.nextDir;
+            const head = {
+                x: (this.body[0].x + this.dir.x + WORLD_W) % WORLD_W,
+                y: (this.body[0].y + this.dir.y + WORLD_H) % WORLD_H,
+                a: Math.atan2(this.dir.y, this.dir.x)
+            };
+            this.body.unshift(head);
+
+            let ate = false;
+            for (let i = roomFruits.length - 1; i >= 0; i--) {
+                const f = roomFruits[i];
+                if (Math.abs(f.x - head.x) < 1.2 && Math.abs(f.y - head.y) < 1.2) {
+                    score += f.pts;
+                    ate = true;
+                    this.consumeFruit(f);
+                    break;
+                }
+            }
+            if (!ate) this.body.pop();
+
+            // Collision check
+            Object.values(remotePlayers).forEach(other => {
+                if (!other.alive) return;
+                other.body.forEach(seg => {
+                    if (Math.abs(head.x - seg.x) < 0.5 && Math.abs(head.y - seg.y) < 0.5) {
+                        this.die();
+                    }
+                });
+            });
+        }
+
+        async consumeFruit(fruit) {
+            await updateDoc(roomRef, { fruits: arrayRemove(fruit) });
+            await updateDoc(roomRef, { fruits: arrayUnion(createFruitData()) });
+        }
+
+        draw(ctx, cam) {
+            if (!this.alive) return;
+            const len = this.body.length;
+            for (let i = len - 1; i >= 0; i--) {
+                const seg = this.body[i];
+                const sx = (seg.x * GRID_SIZE) - cam.x + GRID_SIZE/2;
+                const sy = (seg.y * GRID_SIZE) - cam.y + GRID_SIZE/2;
+                if (sx < -50 || sx > window.innerWidth + 50 || sy < -50 || sy > window.innerHeight + 50) continue;
+
+                ctx.save();
+                ctx.translate(sx, sy);
+                ctx.rotate(seg.a);
+                let sz = i === 0 ? 1.3 : Math.max(0.5, 1.2 - (i/len));
+                const sw = GRID_SIZE * sz, sh = GRID_SIZE * 0.8 * sz;
+                const g = ctx.createLinearGradient(0, -sh/2, 0, sh/2);
+                g.addColorStop(0, this.skin.p); g.addColorStop(1, this.skin.s);
+                ctx.fillStyle = g;
+
+                if (i === 0) {
+                    ctx.beginPath(); ctx.ellipse(sw/6, 0, sw/1.5, sh/1.8, 0, 0, 7); ctx.fill();
+                    ctx.fillStyle = 'white';
+                    ctx.beginPath(); ctx.arc(sw/4, -sh/4, 2, 0, 7); ctx.fill();
+                    ctx.beginPath(); ctx.arc(sw/4, sh/4, 2, 0, 7); ctx.fill();
+                } else {
+                    ctx.beginPath(); ctx.ellipse(0, 0, sw/1.8, sh/2, 0, 0, 7); ctx.fill();
+                }
+                ctx.restore();
+            }
+        }
+
+        die() {
+            this.alive = false;
+            isGameOver = true;
+            syncState();
+            document.getElementById('finalStats').innerText = `SCORE: ${score}`;
+            document.getElementById('gameOverModal').classList.remove('hidden');
+        }
+    }
+
+    async function syncState() {
+        if (!localSnake || !roomRef) return;
+        const key = `p_${user.uid}`;
+        const data = {};
+        data[key] = {
+            body: localSnake.body.slice(0, 40),
+            skin: localSnake.skin,
+            alive: localSnake.alive,
+            score: score
+        };
+        await updateDoc(roomRef, data);
+    }
+
+    function gameLoop(now) {
+        if (isGameOver && !localSnake.alive) return;
+        const ctx = document.getElementById('gameCanvas').getContext('2d');
+        
+        if (now - lastTick > UPDATE_TICK) {
+            localSnake.update();
+            lastTick = now;
+            frame++;
+        }
+
+        if (now - lastNetworkSync > NETWORK_TICK) {
+            syncState();
+            lastNetworkSync = now;
+        }
+
+        const cam = {
+            x: (localSnake.body[0].x * GRID_SIZE) - (window.innerWidth/2),
+            y: (localSnake.body[0].y * GRID_SIZE) - (window.innerHeight/2)
+        };
+
+        ctx.fillStyle = "#020617"; ctx.fillRect(0,0,window.innerWidth,window.innerHeight);
+        
+        const bw = assets.bg.width || 1024, bh = assets.bg.height || 1024;
+        const ox = -((cam.x * 0.5 % bw) + bw) % bw, oy = -((cam.y * 0.5 % bh) + bh) % bh;
+        for(let x = ox - bw; x < window.innerWidth + bw; x += bw) {
+            for(let y = oy - bh; y < window.innerHeight + bh; y += bh) ctx.drawImage(assets.bg, x, y, bw, bh);
+        }
+
+        roomElements.forEach(el => ctx.drawImage(el.t === 1 ? assets.crystal1 : assets.crystal2, (el.x * GRID_SIZE) - cam.x, (el.y * GRID_SIZE) - cam.y, 80, 80));
+        roomFruits.forEach(f => {
+            const sz = GRID_SIZE * f.sz;
+            ctx.drawImage(assets[f.type], (f.x * GRID_SIZE) - cam.x - sz/2, (f.y * GRID_SIZE) - cam.y - sz/2, sz, sz);
+        });
+
+        Object.values(remotePlayers).forEach(p => p.draw(ctx, cam));
+        localSnake.draw(ctx, cam);
+
+        document.getElementById('scoreDisplay').innerText = score;
+        requestAnimationFrame(gameLoop);
+    }
+
+    // --- INPUTS ---
+    const joy = {
+        z: document.getElementById('joystick-zone'),
+        c: document.getElementById('joystick-container'),
+        k: document.getElementById('joystick-knob'),
+        act: false, o: {x:0, y:0}
+    };
+
+    joy.z.addEventListener('touchstart', e => {
+        const t = e.touches[0]; joy.act = true; joy.o = {x: t.clientX, y: t.clientY};
+        joy.c.style.display = 'flex'; joy.c.style.left = `${t.clientX}px`; joy.c.style.top = `${t.clientY}px`;
+    });
+
+    window.addEventListener('touchmove', e => {
+        if (!joy.act) return;
+        const t = e.touches[0], dx = t.clientX - joy.o.x, dy = t.clientY - joy.o.y;
+        const dist = Math.min(50, Math.sqrt(dx*dx + dy*dy)), ang = Math.atan2(dy, dx);
+        joy.k.style.transform = `translate(${Math.cos(ang)*dist}px, ${Math.sin(ang)*dist}px)`;
+        if (dist > 10) {
+            let nx = 0, ny = 0;
+            if (Math.abs(dx) > Math.abs(dy)) nx = dx > 0 ? 1 : -1; else ny = dy > 0 ? 1 : -1;
+            if (nx !== -localSnake.dir.x || ny !== -localSnake.dir.y) if (nx !== 0 || ny !== 0) localSnake.nextDir = {x: nx, y: ny};
+        }
+    });
+
+    window.addEventListener('touchend', () => { joy.act = false; joy.c.style.display = 'none'; });
+
+    window.addEventListener('keydown', e => {
+        const k = e.key;
+        if ((k === 'ArrowUp' || k === 'w') && localSnake.dir.y === 0) localSnake.nextDir = {x: 0, y: -1};
+        if ((k === 'ArrowDown' || k === 's') && localSnake.dir.y === 0) localSnake.nextDir = {x: 0, y: 1};
+        if ((k === 'ArrowLeft' || k === 'a') && localSnake.dir.x === 0) localSnake.nextDir = {x: -1, y: 0};
+        if ((k === 'ArrowRight' || k === 'd') && localSnake.dir.x === 0) localSnake.nextDir = {x: 1, y: 0};
+    });
+
+    window.onload = init;
+</script>
+</body>
+</html>
